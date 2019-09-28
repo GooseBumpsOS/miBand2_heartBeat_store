@@ -5,8 +5,19 @@ import requests
 import numpy as np
 import sys
 import argparse
+import os
 from Crypto.Cipher import AES
 from bluepy.btle import Peripheral, DefaultDelegate, ADDR_TYPE_RANDOM
+
+
+def getWifiName():
+
+    ssid = os.popen("iwconfig wlp1s0 \
+                    | grep 'ESSID' \
+                    | awk '{print $4}' \
+                    | awk -F\\\" '{print $2}'").read()
+
+    return ssid
 
 ''' TODO
 Key should be generated and stored during init
@@ -128,6 +139,9 @@ class AuthenticationDelegate(DefaultDelegate):
         DefaultDelegate.__init__(self)
         self.device = device
 
+    def setHeartBeat(val):
+        AuthenticationDelegate.heart_beat = val
+
     def handleNotification(self, hnd, data):
         # Debug purposes
         #print("HANDLE: " + str(hex(hnd)))
@@ -153,13 +167,26 @@ class AuthenticationDelegate(DefaultDelegate):
             #print("Auth Response: " + str(data.encode("hex")))
         elif hnd == self.device.char_hrm.getHandle():
             rate = struct.unpack('bb', data)[1]
-            heart_beat = print(str(rate))
+            #print(rate)
+            #print(str(rate))
+            AuthenticationDelegate.setHeartBeat(str(rate))
             # AAAA = str(rate)
 
             #print(array_rate)
            # print("Heart Rate: " + str(rate))
         else:
             print("Unhandled Response " + hex(hnd) + ": " + str(data.encode("hex")))
+
+def sendWifiName():
+
+    headers = {
+        'Content-Type': 'text/html; charset=utf-8',
+    }
+
+    params = {'wifi' : getWifiName()}
+
+    response = requests.get('http://api.mgsu41.tk/physical/api/PhysicalDataApi/setUserPhysicalData', headers=headers, params=params)
+
 
 def curlSendData(hr, mac):
 
@@ -171,10 +198,9 @@ def curlSendData(hr, mac):
 
     response = requests.get('http://api.mgsu41.tk/physical/api/PhysicalDataApi/setUserPhysicalData', headers=headers, params=params)
 
-    print(response)
-
 
 def init(band):
+    sendWifiName()
     if band.initialize():
         print("Init ok")
         return True
@@ -237,14 +263,20 @@ def main(host):
     # band.disconnect()
     # del band
 
-
+# {#  TODO сделать  фунц #
 if __name__ == "__main__":
 
     mac = 'CC:D8:71:05:DA:65'
 
     band = main(mac)
 
-    #print("Cont. HRM start")
+
+    # band.hrmStopContinuous()
+    # band.hrmStartContinuous()
+    # for i in range(30):
+    #     band.waitForNotifications(1.0)
+    #     print(AuthenticationDelegate.heart_beat)
+
     while True:
         band.hrmStopContinuous()
         band.hrmStartContinuous()
