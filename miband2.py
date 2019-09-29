@@ -183,9 +183,17 @@ def sendWifiName():
         'Content-Type': 'text/html; charset=utf-8',
     }
 
-    params = {'wifi' : getWifiName()}
+    wifiName = getWifiName()
 
-    response = requests.get('http://api.mgsu41.tk/physical/api/PhysicalDataApi/setUserPhysicalData', headers=headers, params=params)
+    params = {'Wifi' : wifiName}
+
+    response = requests.get('http://api.mgsu41.tk/physical/api/PhysicalDataApi/isOnWork', headers=headers, params=params)
+
+    print(response)
+
+    raise SystemExit(1)
+
+#http://api.mgsu41.tk/physical/api/PhysicalDataApi/isOnWork?Wifi=GOSHA
 
 
 def curlSendData(hr, mac):
@@ -200,7 +208,6 @@ def curlSendData(hr, mac):
 
 
 def init(band):
-    sendWifiName()
     if band.initialize():
         print("Init ok")
         return True
@@ -234,7 +241,9 @@ def main(host):
     band = MiBand2(host)
     band.setSecurityLevel(level="medium")
 
-    #init(band)
+    init(band)
+
+    sendWifiName()
 
     band.authenticate()#херня для входа в систему
     band.init_after_auth()
@@ -265,6 +274,7 @@ def main(host):
 
 # {#  TODO сделать  фунц #
 if __name__ == "__main__":
+
 
     mac = 'CC:D8:71:05:DA:65'
 
