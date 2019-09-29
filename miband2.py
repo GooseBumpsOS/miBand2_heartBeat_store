@@ -5,6 +5,7 @@ import requests
 import numpy as np
 import sys
 import argparse
+import json
 import os
 from Crypto.Cipher import AES
 from bluepy.btle import Peripheral, DefaultDelegate, ADDR_TYPE_RANDOM
@@ -177,7 +178,15 @@ class AuthenticationDelegate(DefaultDelegate):
         else:
             print("Unhandled Response " + hex(hnd) + ": " + str(data.encode("hex")))
 
-def sendWifiName():
+def analizeDataTrigger(mac):
+	headers = {'Content-Type': 'text/html; charset=utf-8'}
+
+	params = {'UserId' : mac}
+
+	response = requests.get('http://api.mgsu41.tk/physical/api/PhysicalDataApi/analysisUserPhysicalData', headers=headers, params=params)
+
+
+def setOnWork(mac):
 
     headers = {
         'Content-Type': 'text/html; charset=utf-8',
@@ -185,13 +194,14 @@ def sendWifiName():
 
     wifiName = getWifiName()
 
-    params = {'Wifi' : wifiName}
+    params = {'Wifi' : wifiName[0:len(wifiName)-1],
+
+		'UserId' : mac
+}
 
     response = requests.get('http://api.mgsu41.tk/physical/api/PhysicalDataApi/isOnWork', headers=headers, params=params)
 
-    print(response)
-
-    raise SystemExit(1)
+    return response.json()
 
 #http://api.mgsu41.tk/physical/api/PhysicalDataApi/isOnWork?Wifi=GOSHA
 
@@ -243,7 +253,6 @@ def main(host):
 
     init(band)
 
-    sendWifiName()
 
     band.authenticate()#херня для входа в систему
     band.init_after_auth()
@@ -276,22 +285,24 @@ def main(host):
 if __name__ == "__main__":
 
 
-    mac = 'CC:D8:71:05:DA:65'
+	dataSendCounter = 0
+	mac = 'CC:D8:71:05:DA:65'
 
-    band = main(mac)
+	band = main(mac)
+
+	setOnWork(mac)
 
 
-    # band.hrmStopContinuous()
-    # band.hrmStartContinuous()
-    # for i in range(30):
-    #     band.waitForNotifications(1.0)
-    #     print(AuthenticationDelegate.heart_beat)
 
-    while True:
-        band.hrmStopContinuous()
-        band.hrmStartContinuous()
-        for i in range(30):
-            if(band.waitForNotifications(1.0)):
-                curlSendData(AuthenticationDelegate.heart_beat, mac)
-            else:
-                continue
+	while True:
+		if ((dataSendCounter % 2 == 0) & (dataSendCounter >= 2)):
+			analizeDataTrigger(mac)
+		dataSendCounter += 1
+		band.hrmStopContinuous()
+		band.hrmStartContinuous()
+	
+		for i in range(30):
+			if(band.waitForNotifications(1.0)):
+				curlSendData(AuthenticationDelegate.heart_beat, mac)
+			else:
+				continue
